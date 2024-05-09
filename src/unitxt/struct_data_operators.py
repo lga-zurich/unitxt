@@ -547,3 +547,40 @@ class ShuffleTableColumns(FieldOperator):
         table_content["rows"] = shuffled_rows
 
         return table_content
+
+
+class ConstructTableStructure(StreamInstanceOperator):
+    """Maps column and row field into single table field encompassing both header and rows.
+
+    field[0] = header string as List
+    field[1] = rows string as List[List]
+    field[2] = table caption string(optional)
+    """
+
+    fields: List[str]
+    to_field: str
+
+    def process(
+        self, instance: Dict[str, Any], stream_name: Optional[str] = None
+    ) -> Dict[str, Any]:
+        header = dict_get(instance, self.fields[0])
+        rows = dict_get(instance, self.fields[1])
+
+        if len(self.fields) >= 3:
+            caption = instance[self.fields[2]]
+        else:
+            caption = None
+
+        import ast
+
+        header_processed = ast.literal_eval(header)
+        rows_processed = ast.literal_eval(rows)
+
+        output_dict = {"header": header_processed, "rows": rows_processed}
+
+        if caption is not None:
+            output_dict["caption"] = caption
+
+        instance[self.to_field] = output_dict
+
+        return instance
